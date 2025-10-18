@@ -1,0 +1,564 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kooperatif Muhasebe Yazılımı</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--brand:#0d6efd}
+    body{padding-top:1rem;padding-bottom:3rem;background:#f8f9fa}
+    .card-compact{padding:1rem}
+    .pointer{cursor:pointer}
+    .small-muted{font-size:.85rem;color:#6c757d}
+    .app-header{display:flex;gap:1rem;align-items:center}
+    .logo{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--brand),#6610f2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    @media (max-width:576px){.d-lg-block{display:none!important}}
+  </style>
+  <style>
+/* Make translate widget responsive & clean */
+#google_translate_element {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+}
+.goog-te-gadget img {
+  display: none !important; /* Hide Google icon */
+}
+.goog-te-gadget-simple {
+  border: none !important;
+  background: transparent !important;
+}
+@media (max-width: 600px) {
+  #google_translate_element {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+}
+</style>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+	<!-- Google Translate Widget (Turkish Only) -->
+<div id="google_translate_element" style="text-align:center; margin:10px auto;"></div>
+
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="app-header">
+      <div class="logo">Co</div>
+      <div>
+        <h4 class="mb-0"> Kooperatif Muhasebe Yazılımı</h4>
+        <div class="small-muted">Çevrimdışı - verileri bu cihazda depolar</div>
+      </div>
+    </div>
+    <div class="text-end">
+      <button id="backupBtn" class="btn btn-outline-secondary btn-sm">Export JSON</button>
+      <button id="importBtn" class="btn btn-outline-secondary btn-sm">Import JSON</button>
+      <button id="resetBtn" class="btn btn-outline-danger btn-sm">Reset Data</button>
+    </div>
+  </div>  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Üye Ekle</h5>
+          <form id="memberForm">
+            <div class="mb-2">
+              <input id="mName" class="form-control" placeholder="Ad Soyad" required>
+            </div>
+            <div class="mb-2">
+              <input id="mPhone" class="form-control" placeholder="Telefon">
+            </div>
+            <div class="mb-2 d-flex gap-2">
+              <input id="mJoin" class="form-control" type="date">
+              <input id="mInitial" class="form-control" type="number" min="0" placeholder="İlk depozito">
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">Üye Ekle</button>
+              <button id="clearMembers" class="btn btn-outline-secondary" type="button">Net Form</button>
+            </div>
+          </form>
+        </div>
+      </div><div class="card mt-3">
+    <div class="card-body">
+      <h6>Hızlı İşlemler</h6>
+      <div class="d-grid gap-2">
+        <button id="openMemberList" class="btn btn-outline-primary btn-sm">Açık Üye Listesi</button>
+        <button id="openSavings" class="btn btn-outline-success btn-sm">Kayıt Mevduatı</button>
+        <button id="openLoan" class="btn btn-outline-warning btn-sm">Kredi Ver</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="col-lg-8">
+  <div class="card card-compact">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="border rounded p-2 h-100">
+            <div class="small-muted">Toplam Üye Sayısı</div>
+            <h3 id="totalMembers">0</h3>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-2 h-100">
+            <div class="small-muted">Toplam Tasarruf</div>
+            <h3 id="totalSavings">₦0</h3>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-2 h-100">
+            <div class="small-muted">Toplam Ödenmemiş Krediler</div>
+            <h3 id="totalLoans">₦0</h3>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+      <div class="row">
+        <div class="col-lg-6">
+          <canvas id="savingsChart" height="150"></canvas>
+        </div>
+        <div class="col-lg-6">
+          <canvas id="loanChart" height="150"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-body">
+      <h5 class="card-title">Üyeler</h5>
+      <div class="table-responsive">
+        <table class="table table-sm" id="membersTable">
+          <thead>
+            <tr>
+              <th>İsim</th>
+              <th>Telefon</th>
+              <th>Denge</th>
+              <th>Borç</th>
+              <th>Eylemler</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  </div>  <!-- Modals -->  <div class="modal fade" id="transactModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="transactForm" class="modal-body">
+          <h5 id="transactTitle">Kayıt</h5>
+          <input type="hidden" id="transMemberId">
+          <div class="mb-2">
+            <select id="transType" class="form-select">
+              <option value="deposit">Depozito</option>
+              <option value="withdraw">Geri çekilmek</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <input id="transAmount" class="form-control" type="number" min="0" placeholder="Amount" required>
+          </div>
+          <div class="mb-2 d-flex gap-2">
+            <input id="transDate" class="form-control" type="date">
+            <input id="transNote" class="form-control" placeholder="Not (isteğe bağlı)">
+          </div>
+          <div class="text-end">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal etmek</button>
+            <button type="submit" class="btn btn-success">Kaydetmek</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>  <div class="modal fade" id="loanModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="loanForm" class="modal-body">
+          <h5>Kredi Ver</h5>
+          <input type="hidden" id="loanMemberId">
+          <div class="mb-2">
+            <input id="loanAmount" class="form-control" type="number" min="0" placeholder="Kredi tutarı" required>
+          </div>
+          <div class="mb-2">
+            <input id="loanInterest" class="form-control" type="number" min="0" placeholder="Dönem başına faiz %'si (örneğin, 5)">
+          </div>
+          <div class="mb-2 d-flex gap-2">
+            <input id="loanDuration" class="form-control" type="number" min="1" placeholder="Süre (ay)">
+            <input id="loanDate" class="form-control" type="date">
+          </div>
+          <div class="text-end">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal etmek</button>
+            <button type="submit" class="btn btn-warning">Kredi Oluştur</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>  <div class="modal fade" id="repayModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="repayForm" class="modal-body">
+          <h5>Krediyi Geri Öde</h5>
+          <input type="hidden" id="repayMemberId">
+          <div class="mb-2">
+            <input id="repayAmount" class="form-control" type="number" min="0" placeholder="Miktar" required>
+          </div>
+          <div class="mb-2 d-flex gap-2">
+            <input id="repayDate" class="form-control" type="date">
+            <input id="repayNote" class="form-control" placeholder="Not">
+          </div>
+          <div class="text-end">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal etmek</button>
+            <button type="submit" class="btn btn-primary">Ödemeyi Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>  <input id="fileInput" type="file" accept="application/json" style="display:none"></div>
+  <!-- Transaction Modal -->
+<div class="modal fade" id="transactModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="transactForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="transTitle">Kayıt İşlemi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="transMemberId">
+
+        <div class="mb-3">
+          <label for="transType" class="form-label">İşlem Türü</label>
+          <select id="transType" class="form-select">
+            <option value="deposit">Depozito</option>
+            <option value="withdraw">Geri çekilmek</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="transAmount" class="form-label">Miktar</label>
+          <input type="number" id="transAmount" class="form-control" placeholder="Tutarı girin">
+        </div>
+
+        <div class="mb-3">
+          <label for="transDate" class="form-label">Tarih</label>
+          <input type="date" id="transDate" class="form-control">
+        </div>
+
+        <div class="mb-3">
+          <label for="transNote" class="form-label">Not</label>
+          <input type="text" id="transNote" class="form-control" placeholder="İsteğe bağlı not">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">İşlemi Kaydet</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapalı</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Transaction History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">İşlem Geçmişi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Tip</th>
+              <th>Miktar</th>
+              <th>Not</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Kapalı</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script><script>
+// Simple offline cooperative manager using LocalStorage
+const DB_KEY = 'coop_data_v1';
+let db = {members:[], transactions:[], loans:[]};
+
+// Helpers
+const money = (n)=> '₺' + Number(n||0).toLocaleString();
+const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+// Load/Save
+function loadDB(){
+  const raw = localStorage.getItem(DB_KEY);
+  if(raw){ try{ db = JSON.parse(raw);}catch(e){console.error(e);db={members:[],transactions:[],loans:[]}} }
+  updateUI();
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); updateUI(); }
+
+// Calculations
+function memberBalance(memberId){
+  const deposits = db.transactions.filter(t=>t.memberId===memberId && t.type==='deposit').reduce((s,t)=>s+Number(t.amount),0);
+  const withdraws = db.transactions.filter(t=>t.memberId===memberId && t.type==='withdraw').reduce((s,t)=>s+Number(t.amount),0);
+  return deposits - withdraws;
+}
+function memberLoanBalance(memberId){
+  const loans = db.loans.filter(l=>l.memberId===memberId);
+  let outstanding = 0;
+  for(const l of loans){
+    const repayments = (l.repayments||[]).reduce((s,r)=>s+Number(r.amount),0);
+    const total = Number(l.amount) + Number(l.interest || 0);
+    outstanding += Math.max(0, total - repayments);
+  }
+  return outstanding;
+}
+
+// UI update
+let savingsChart,loanChart;
+function updateUI(){
+  document.getElementById('totalMembers').textContent = db.members.length;
+  const totalSavings = db.members.reduce((s,m)=>s+memberBalance(m.id),0);
+  const totalLoans = db.members.reduce((s,m)=>s+memberLoanBalance(m.id),0);
+  document.getElementById('totalSavings').textContent = money(totalSavings);
+  document.getElementById('totalLoans').textContent = money(totalLoans);
+
+  // Table
+  const tbody = document.querySelector('#membersTable tbody'); tbody.innerHTML='';
+  db.members.forEach(m=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(m.name)}</strong><div class="small-muted">Joined: ${m.joinDate||'-'}</div></td>
+      <td>${escapeHtml(m.phone||'')}</td>
+      <td>${money(memberBalance(m.id))}</td>
+      <td>${money(memberLoanBalance(m.id))}</td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <button class="btn btn-outline-primary" onclick="openTrans('${m.id}')">Transact</button>
+          <button class="btn btn-outline-warning" onclick="openLoanFor('${m.id}')">Loan</button>
+          <button class="btn btn-outline-success" onclick="openRepayFor('${m.id}')">Repay</button>
+           <button class="btn btn-outline-info" onclick="callMember('${m.phone}')">Call</button>
+           <button class="btn btn-outline-secondary" onclick="openHistoryFor('${m.id}')">History</button>
+           <button class="btn btn-outline-danger" onclick="deleteMember('${m.id}')">Delete</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Charts
+  const labels = db.members.map(m=>m.name);
+  const savingsData = db.members.map(m=>memberBalance(m.id));
+  const loansData = db.members.map(m=>memberLoanBalance(m.id));
+
+  if(savingsChart) savingsChart.data.datasets[0].data = savingsData;
+  if(loanChart) loanChart.data.datasets[0].data = loansData;
+  if(savingsChart) savingsChart.update();
+  if(loanChart) loanChart.update();
+}
+
+function escapeHtml(text){ return String(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Member add
+document.getElementById('memberForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('mName').value.trim();
+  if(!name) return alert('Name required');
+  const member = {id:uid(), name, phone:document.getElementById('mPhone').value.trim(), joinDate:document.getElementById('mJoin').value || new Date().toISOString().slice(0,10)};
+  db.members.push(member);
+  const initial = Number(document.getElementById('mInitial').value || 0);
+  if(initial>0){ db.transactions.push({id:uid(), memberId:member.id, type:'deposit', amount:initial, date:new Date().toISOString().slice(0,10), note:'Initial deposit'}); }
+  saveDB();
+  document.getElementById('memberForm').reset();
+});
+
+// Quick open
+document.getElementById('openMemberList').addEventListener('click', ()=>window.scrollTo({top:document.querySelector('#membersTable').offsetTop - 20, behavior:'smooth'}));
+document.getElementById('openSavings').addEventListener('click', ()=>{ showTransModal(); });
+document.getElementById('openLoan').addEventListener('click', ()=>{ showLoanModal(); });
+
+// Transactions modal
+const transactModal = new bootstrap.Modal(document.getElementById('transactModal'));
+function openTrans(memberId){
+  document.getElementById('transMemberId').value = memberId;
+  document.getElementById('transTitle').textContent = 'Record transaction';
+  document.getElementById('transType').value='deposit';
+  document.getElementById('transAmount').value='';
+  document.getElementById('transDate').value = new Date().toISOString().slice(0,10);
+  transactModal.show();
+}
+function showTransModal(){ document.getElementById('transMemberId').value = ''; transactModal.show(); }
+
+document.getElementById('transactForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const memberId = document.getElementById('transMemberId').value;
+  const type = document.getElementById('transType').value;
+  const amount = Number(document.getElementById('transAmount').value||0);
+  if(!memberId){ return alert('Select a member by opening transact from a member row.'); }
+  if(amount<=0) return alert('Enter amount');
+  const t = {id:uid(), memberId, type, amount, date:document.getElementById('transDate').value||new Date().toISOString().slice(0,10), note:document.getElementById('transNote').value||''};
+  db.transactions.push(t); saveDB(); transactModal.hide();
+});
+
+const historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+
+function openHistoryFor(memberId) {
+  const member = db.members.find(m => m.id === memberId);
+  if (!member) return alert('Member not found');
+
+  const trans = db.transactions.filter(t => t.memberId === memberId);
+  const loans = db.loans.filter(l => l.memberId === memberId);
+
+  const tbody = document.getElementById('historyBody');
+  tbody.innerHTML = '';
+
+  if (trans.length === 0 && loans.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center">No records yet</td></tr>`;
+  } else {
+    trans.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.date}</td>
+        <td>${t.type}</td>
+        <td>${money(t.amount)}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    loans.forEach(l => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${l.date}</td>
+        <td>Loan (${l.duration} months)</td>
+        <td>${money(l.amount)} + Int. ${money(l.interest || 0)}</td>
+        <td>Loan issued</td>
+      `;
+      tbody.appendChild(tr);
+
+      (l.repayments || []).forEach(r => {
+        const rr = document.createElement('tr');
+        rr.innerHTML = `
+          <td>${r.date}</td>
+          <td>Repayment</td>
+          <td>${money(r.amount)}</td>
+          <td>${escapeHtml(r.note || '')}</td>
+        `;
+        tbody.appendChild(rr);
+      });
+    });
+  }
+
+  document.querySelector('#historyModal .modal-title').textContent = `${member.name}'s History`;
+  historyModal.show();
+}
+
+// Loans
+const loanModal = new bootstrap.Modal(document.getElementById('loanModal'));
+const repayModal = new bootstrap.Modal(document.getElementById('repayModal'));
+function openLoanFor(memberId){ document.getElementById('loanMemberId').value = memberId; loanModal.show(); }
+function showLoanModal(){ document.getElementById('loanMemberId').value=''; loanModal.show(); }
+
+document.getElementById('loanForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const memberId = document.getElementById('loanMemberId').value;
+  if(!memberId) return alert('Open loan from a member row.');
+  const amount = Number(document.getElementById('loanAmount').value||0);
+  const interestP = Number(document.getElementById('loanInterest').value||0);
+  const interest = Math.round(amount * (interestP/100));
+  const loan = {id:uid(), memberId, amount, interest, date:document.getElementById('loanDate').value||new Date().toISOString().slice(0,10), duration:document.getElementById('loanDuration').value||0, repayments:[]};
+  db.loans.push(loan); saveDB(); loanModal.hide();
+});
+
+function openRepayFor(memberId){ document.getElementById('repayMemberId').value = memberId; repayModal.show(); }
+
+document.getElementById('repayForm').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const memberId = document.getElementById('repayMemberId').value;
+  const amount = Number(document.getElementById('repayAmount').value||0);
+  if(amount<=0) return alert('Enter amount');
+  const note = document.getElementById('repayNote').value||'';
+  // apply to oldest outstanding loan
+  const loans = db.loans.filter(l=>l.memberId===memberId);
+  if(loans.length===0) return alert('No loans for this member');
+  loans.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let remaining = amount;
+  for(const l of loans){
+    const paid = (l.repayments||[]).reduce((s,r)=>s+Number(r.amount),0);
+    const total = Number(l.amount) + Number(l.interest||0);
+    const due = Math.max(0, total - paid);
+    if(due<=0) continue;
+    const pay = Math.min(due, remaining);
+    l.repayments.push({id:uid(), amount:pay, date:document.getElementById('repayDate').value||new Date().toISOString().slice(0,10), note});
+    remaining -= pay;
+    if(remaining<=0) break;
+  }
+  saveDB(); repayModal.hide();
+});
+
+// Delete member
+function deleteMember(id){ if(!confirm('Delete member and all records?')) return; db.members = db.members.filter(m=>m.id!==id); db.transactions = db.transactions.filter(t=>t.memberId!==id); db.loans = db.loans.filter(l=>l.memberId!==id); saveDB(); }
+
+// Backup / Import
+document.getElementById('backupBtn').addEventListener('click', ()=>{
+  const dataStr = JSON.stringify(db, null, 2);
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = 'coop-backup-'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+const fileInput = document.getElementById('fileInput');
+document.getElementById('importBtn').addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change',(e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader(); reader.onload = ()=>{
+    try{ const obj = JSON.parse(reader.result); if(obj && obj.members){ db = obj; saveDB(); alert('Imported successfully'); }else alert('Invalid file'); }catch(err){alert('Error parsing file')}
+  }; reader.readAsText(f);
+});
+
+function callMember(phone) {
+  if (!phone) return alert('No phone number');
+  const clean = phone.replace(/^0/, ''); // remove leading zero if present
+  const full = '+90' + clean; // Nigeria prefix
+  window.location.href = `tel:${full}`;
+}
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', ()=>{ if(confirm('Reset all data? This cannot be undone.')){ localStorage.removeItem(DB_KEY); db={members:[],transactions:[],loans:[]}; updateUI(); } });
+
+// Init charts
+function initCharts(){
+  const sctx = document.getElementById('savingsChart').getContext('2d');
+  savingsChart = new Chart(sctx, {type:'bar', data:{labels:[], datasets:[{label:'Member Savings', data:[], backgroundColor:'rgba(13,110,253,0.6)'}]}, options:{responsive:true, plugins:{legend:{display:false}}}});
+  const lctx = document.getElementById('loanChart').getContext('2d');
+  loanChart = new Chart(lctx, {type:'bar', data:{labels:[], datasets:[{label:'Loan Outstanding', data:[], backgroundColor:'rgba(255,193,7,0.6)'}]}, options:{responsive:true, plugins:{legend:{display:false}}}});
+}
+
+// On load
+initCharts(); loadDB();
+</script>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',     // your page’s default language
+    includedLanguages: 'tr', // only Turkish
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+  }, 'google_translate_element');
+}
+</script>
+</script></body>
+</html>

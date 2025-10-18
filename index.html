@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ORHAN Kooperatif Muhasebe Yazlm - Giri</title>
+
+  <!-- Bootstrap + Fonts -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, #007bff, #6610f2);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /*  Translate bar - stays on top center */
+    .translate-bar {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 14px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    #google_translate_element {
+      display: inline-block;
+      font-size: 14px;
+    }
+    .goog-te-gadget img {
+      display: none !important;
+    }
+    .goog-te-gadget-simple {
+      border: none !important;
+      background: transparent !important;
+    }
+    @media (max-width: 600px) {
+      .translate-bar {
+        top: 8px;
+        padding: 4px 10px;
+        font-size: 13px;
+      }
+    }
+
+    /* Login Card */
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      padding: 40px 30px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .login-card:hover {
+      transform: translateY(-5px);
+    }
+    .login-card h3 {
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 15px;
+    }
+    .login-card p {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 25px;
+    }
+    .form-control {
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .btn-login {
+      background: linear-gradient(90deg, #007bff, #6610f2);
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      color: #fff;
+      font-weight: 600;
+      width: 100%;
+      transition: 0.3s;
+    }
+    .btn-login:hover {
+      opacity: 0.9;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    /* Loader overlay */
+    #loaderOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255, 255, 255, 0.96);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.3s ease;
+    }
+    .spinner {
+      border: 5px solid #e0e0e0;
+      border-top: 5px solid #007bff;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 15px;
+      font-weight: 600;
+      color: #333;
+      font-size: 16px;
+    }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+  </style>
+
+  <!--  Google Translate -->
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script>
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'tr',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+      }, 'google_translate_element');
+    }
+  </script>
+</head>
+<body>
+
+  <!--  Google Translate Widget -->
+  <div class="translate-bar">
+    <div id="google_translate_element"></div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loaderOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Loading...</div>
+  </div>
+
+  <!-- Login Card -->
+  <div class="login-card" id="loginCard">
+    <h3>ORHAN KOOPERATF MUHASEBE YAZILIMI</h3>
+    <p>Üyeleri yönetmek için iyi bir yazlm — Türkiye genelindeki kooperatif gruplarna uygundur.</p>
+
+    <form id="loginForm">
+      <div class="mb-3 text-start">
+        <label class="form-label fw-semibold">Kullanc ad</label>
+        <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+      </div>
+      <div class="mb-3 text-start">
+        <label class="form-label fw-semibold">ifre</label>
+        <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+      </div>
+      <button type="submit" class="btn-login">Giri yapmak</button>
+    </form>
+
+    <div class="footer">© 2025 ORHAN Kooperatif</div>
+  </div>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const loader = document.getElementById("loaderOverlay");
+    const card = document.getElementById("loginCard");
+    const loadingText = document.getElementById("loadingText");
+
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      // Hide form, show loader
+      card.style.display = "none";
+      loader.style.display = "flex";
+
+      if (username === "Orhan" && password === "orhan01") {
+        loadingText.textContent = "Giri baarl! Yönlendiriliyor...";
+        loadingText.className = "loading-text success";
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 2000);
+      } else {
+        loadingText.textContent = "Yanl kullanc ad veya ifre!";
+        loadingText.className = "loading-text error";
+        setTimeout(() => {
+          loader.style.display = "none";
+          card.style.display = "block";
+        }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>
