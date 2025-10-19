@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🎵 Listen | Music Player</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Google Font + Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: radial-gradient(circle at top left, #0a192f, #020c1b);
+      color: #f1f6ff;
+      padding: 20px;
+    }
+    h3 {
+      font-weight: 600;
+      color: #90e0ef;
+    }
+    .track {
+      background: #112240;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .track:hover {
+      transform: scale(1.01);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    }
+    .controls button {
+      border: none;
+      background: #1d3557;
+      color: #f1f6ff;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 4px;
+      transition: background 0.2s;
+    }
+    .controls button:hover {
+      background: #457b9d;
+    }
+    .progress {
+      height: 8px;
+      background: #1d3557;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .bar {
+      height: 8px;
+      background: #90e0ef;
+      width: 0%;
+      transition: width .25s;
+    }
+    .meta { color: #adb5bd; font-size: 0.9rem; }
+    .download-btn {
+      background: #06d6a0;
+      border: none;
+      color: #0a192f;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 8px 14px;
+      transition: all .2s ease;
+    }
+    .download-btn:hover {
+      background: #05b384;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h3 class="mb-3 text-center">🎶 Explore New Tracks</h3>
+    <div id="tracks">Loading tracks...</div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    // ======= CONFIGURE =======
+    const SUPABASE_URL = "https://pjedtymwfyjmzluejygs.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBqZWR0eW13ZnlqbXpsdWVqeWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjE4OTYsImV4cCI6MjA3NjAzNzg5Nn0.g7p_nlemO1ZvpGMPwutsnr2SmlE4jVZw-VCGsbQK530";
+    const ADSTERRA_SMARTLINK = "https://your-adsterra-smartlink.com";
+    const WHATSAPP_NUMBER = "234XXXXXXXXXX";
+    // =========================
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const tracksEl = document.getElementById("tracks");
+    const activeSessions = {};
+
+    async function loadTracks() {
+      const { data, error } = await supabase.from("audios").select("*").order("created_at", { ascending: false });
+      if (error) return (tracksEl.innerText = "Error loading tracks");
+
+      if (!data.length) {
+        tracksEl.innerHTML = '<p class="text-center text-muted mt-4">No tracks yet. Check back later 🎧</p>';
+        return;
+      }
+
+      tracksEl.innerHTML = data.map(t => `
+        <div class="track" id="track-${t.id}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">${t.title}</h5>
+              <p class="meta mb-1">${t.description || ""}</p>
+              <span class="meta">Posted ${new Date(t.created_at).toLocaleString()}</span>
+            </div>
+            <button class="download-btn" onclick="onDownload('${t.id}','${encodeURIComponent(t.title)}')">
+              <span class="material-symbols-outlined">download</span> Get Audio
+            </button>
+          </div>
+          <audio id="audio-${t.id}" src="${t.audio_url}"></audio>
+
+          <div class="controls mt-3 text-center">
+            <button onclick="playWithAd('${t.id}')"><span class="material-symbols-outlined">play_arrow</span></button>
+            <button onclick="pauseTrack('${t.id}')"><span class="material-symbols-outlined">pause</span></button>
+            <button onclick="rewind('${t.id}')"><span class="material-symbols-outlined">fast_rewind</span></button>
+            <button onclick="forward('${t.id}')"><span class="material-symbols-outlined">fast_forward</span></button>
+          </div>
+          <div class="progress mt-2"><div id="bar-${t.id}" class="bar"></div></div>
+        </div>`).join("");
+
+      data.forEach(t => attachHandlers(t.id));
+    }
+
+    function attachHandlers(id) {
+      const audio = document.getElementById(`audio-${id}`);
+      const bar = document.getElementById(`bar-${id}`);
+      if (!audio) return;
+
+      audio.addEventListener("timeupdate", () => {
+        const dur = audio.duration || 0;
+        bar.style.width = dur ? `${(audio.currentTime / dur) * 100}%` : "0%";
+      });
+      audio.addEventListener("ended", () => finalizeAnalytics(id));
+      audio.addEventListener("pause", () => finalizeAnalytics(id));
+      window.addEventListener("beforeunload", () => finalizeAnalytics(id));
+    }
+
+    async function playWithAd(id) {
+      window.open(ADSTERRA_SMARTLINK, "_blank");
+      setTimeout(async () => {
+        const audio = document.getElementById(`audio-${id}`);
+        await audio.play().catch(() => Swal.fire("Tap play again to start audio."));
+        const ua = navigator.userAgent;
+        const { data } = await supabase.from("play_events").insert([{ audio_id: id, user_agent: ua }]).select().single();
+        if (data) activeSessions[id] = { eventId: data.id, startedAt: data.started_at };
+      }, 900);
+    }
+
+    function pauseTrack(id) { document.getElementById(`audio-${id}`).pause(); }
+    function forward(id) { const a = document.getElementById(`audio-${id}`); a.currentTime = Math.min(a.currentTime + 10, a.duration); }
+    function rewind(id) { const a = document.getElementById(`audio-${id}`); a.currentTime = Math.max(a.currentTime - 10, 0); }
+
+    async function finalizeAnalytics(id) {
+      const s = activeSessions[id];
+      if (!s) return;
+      const now = new Date();
+      const dur = Math.round((now - new Date(s.startedAt)) / 1000);
+      await supabase.from("play_events").update({ ended_at: now.toISOString(), duration_seconds: dur }).eq("id", s.eventId);
+      delete activeSessions[id];
+    }
+
+    function onDownload(id, title) {
+      const msg = encodeURIComponent(`I want to get full audio for: ${decodeURIComponent(title)}`);
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
+    }
+
+    loadTracks();
+    supabase.channel("public:audios").on("postgres_changes", { event: "INSERT", schema: "public", table: "audios" }, loadTracks).subscribe();
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin | Music Manager</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg,#020c1b,#0a192f);
+      color:#eaf4fc;
+      padding:20px;
+    }
+    h2 { color:#90e0ef; font-weight:600; }
+    .card {
+      background:#112240;
+      border:none;
+      border-radius:14px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.5);
+      padding:18px;
+      margin-bottom:18px;
+    }
+    input,textarea {
+      background:#0a192f; color:#f1f6ff; border:1px solid #233554; border-radius:10px;
+    }
+    button { font-weight:500; }
+    .btn-primary {
+      background:#06d6a0; border:none; color:#0a192f;
+    }
+    .btn-primary:hover { background:#05b384; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="mb-3 text-center">🎛️ Admin Dashboard</h2>
+
+    <div class="card">
+      <h5><span class="material-symbols-outlined align-middle">library_music</span> Add New Audio</h5>
+      <div class="mb-2"><input id="title" class="form-control" placeholder="Title"></div>
+      <div class="mb-2"><textarea id="description" class="form-control" rows="2" placeholder="Description"></textarea></div>
+      <div class="mb-2"><input id="audioUrl" class="form-control" placeholder="Audio URL (mp3 link)"></div>
+      <div class="mb-2"><input id="releaseTime" type="datetime-local" class="form-control"></div>
+      <div class="d-grid gap-2">
+        <button id="saveBtn" class="btn btn-primary"><span class="material-symbols-outlined align-middle">cloud_upload</span> Post Audio</button>
+        <a href="user.html" class="btn btn-outline-light">🌍 View User Page</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h5><span class="material-symbols-outlined align-middle">queue_music</span> Uploaded Audios</h5>
+      <div id="audiosList">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h5><span class="material-symbols-outlined align-middle">insights</span> Analytics</h5>
+      <div id="analyticsSummary">Loading...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = "https://pjedtymwfyjmzluejygs.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBqZWR0eW13ZnlqbXpsdWVqeWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjE4OTYsImV4cCI6MjA3NjAzNzg5Nn0.g7p_nlemO1ZvpGMPwutsnr2SmlE4jVZw-VCGsbQK530";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const saveBtn = document.getElementById('saveBtn');
+    const audiosList = document.getElementById('audiosList');
+    const analyticsSummary = document.getElementById('analyticsSummary');
+
+    async function loadAudios() {
+      const { data, error } = await supabase.from('audios').select('*').order('created_at', { ascending: false });
+      if (error) return audiosList.innerText = "Error loading audios";
+      audiosList.innerHTML = data.map(a => `
+        <div class="p-2 border-bottom border-secondary">
+          <strong>${a.title}</strong>
+          <div class="small text-muted">${a.description || ''}</div>
+          <small>${new Date(a.created_at).toLocaleString()}</small>
+        </div>
+      `).join('') || '<p>No audios yet</p>';
+    }
+
+    async function loadAnalytics() {
+      const { data, error } = await supabase.from('play_events').select('audio_id,duration_seconds');
+      if (error) return;
+      const totals = {};
+      data.forEach(e => {
+        if (!totals[e.audio_id]) totals[e.audio_id] = { plays: 0, seconds: 0 };
+        totals[e.audio_id].plays++;
+        totals[e.audio_id].seconds += e.duration_seconds || 0;
+      });
+      const ids = Object.keys(totals);
+      if (!ids.length) return analyticsSummary.innerHTML = '<p>No plays yet</p>';
+      const { data: audios } = await supabase.from('audios').select('id,title').in('id', ids);
+      const names = Object.fromEntries(audios.map(a => [a.id, a.title]));
+      analyticsSummary.innerHTML = ids.map(id =>
+        `<div><strong>${names[id] || id}</strong> — Plays: ${totals[id].plays}, Time: ${(totals[id].seconds/60).toFixed(1)} mins</div>`
+      ).join('');
+    }
+
+    saveBtn.onclick = async () => {
+      const t = title.value.trim(), d = description.value.trim(), u = audioUrl.value.trim(), r = releaseTime.value;
+      if (!t || !u) return Swal.fire('Enter title and audio URL');
+      const release_time = r ? new Date(r).toISOString() : null;
+      await supabase.from('audios').insert([{ title: t, description: d, audio_url: u, release_time }]);
+      Swal.fire('✅ Audio posted!');
+      title.value = description.value = audioUrl.value = releaseTime.value = '';
+      loadAudios();
+    };
+
+    loadAudios();
+    loadAnalytics();
+    supabase.channel('public:audios').on('postgres_changes', { event:'INSERT', schema:'public', table:'audios' }, loadAudios).subscribe();
+  </script>
+</body>
+</html>
